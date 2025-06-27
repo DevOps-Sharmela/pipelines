@@ -1,0 +1,50 @@
+provider "docker" {}
+
+# Pull Docker Image based on environment
+resource "docker_image" "main" {
+  name = var.environment
+}
+
+# Checkout step (mocked with git clone)
+resource "null_resource" "checkout" {
+  provisioner "local-exec" {
+    command = "git clone https://github.com/your-org/your-repo.git"
+  }
+}
+
+# Run main script inside Docker container
+resource "docker_container" "run_main" {
+  name  = "main-script-container"
+  image = docker_image.main.name
+
+  provisioner "local-exec" {
+    command = var.main_script
+  }
+
+  depends_on = [null_resource.checkout]
+}
+
+# Run post script
+resource "null_resource" "post" {
+  provisioner "local-exec" {
+    command = var.post_script
+  }
+
+  depends_on = [docker_container.run_main]
+}
+
+# Variables to match Groovy config
+variable "environment" {
+  description = "Docker image/environment"
+  type        = string
+}
+
+variable "main_script" {
+  description = "Main shell script"
+  type        = string
+}
+
+variable "post_script" {
+  description = "Post-build shell script"
+  type        = string
+}
